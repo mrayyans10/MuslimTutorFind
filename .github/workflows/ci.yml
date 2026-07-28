@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: community_tutors
+          POSTGRES_PASSWORD: community_tutors_dev
+          POSTGRES_DB: community_tutors
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U community_tutors"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://community_tutors:community_tutors_dev@localhost:5432/community_tutors?schema=public
+      AUTH_SECRET: ci-test-secret-not-for-production
+      AUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      STORAGE_DRIVER: local
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm db:seed
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Start app for e2e
+        run: pnpm start &
+      - name: Wait for server
+        run: npx --yes wait-on http://127.0.0.1:3000 --timeout 60000
+      - run: PLAYWRIGHT_SKIP_WEBSERVER=1 pnpm test:e2e
