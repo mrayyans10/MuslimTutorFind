@@ -27,8 +27,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://community_tutors:community_tutors_dev@localhost:5432/community_tutors?schema=public
       AUTH_SECRET: ci-test-secret-not-for-production
-      AUTH_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      AUTH_URL: http://127.0.0.1:4000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:4000
       STORAGE_DRIVER: local
 
     steps:
@@ -51,5 +51,5 @@ jobs:
       - name: Start app for e2e
         run: pnpm start &
       - name: Wait for server
-        run: npx --yes wait-on http://127.0.0.1:3000 --timeout 60000
+        run: npx --yes wait-on http://127.0.0.1:4000 --timeout 60000
       - run: PLAYWRIGHT_SKIP_WEBSERVER=1 pnpm test:e2e

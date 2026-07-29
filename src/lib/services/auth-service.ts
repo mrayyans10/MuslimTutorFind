@@ -54,7 +54,7 @@ function appBaseUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   if (process.env.AUTH_URL) return process.env.AUTH_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
+  return "http://localhost:4000";
 }
 
 function tokenUrl(path: string, token: string) {
