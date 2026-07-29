@@ -25,9 +25,26 @@ export function SignUpForm({ defaultRole }: { defaultRole?: string }) {
   if (state.success) {
     return (
       <div className="surface-card space-y-4 p-6 text-center">
-        <p className="font-medium text-foreground">Check your email</p>
+        <p className="font-medium text-foreground">
+          {state.demoMode ? "Account created" : "Check your email"}
+        </p>
         <p className="text-sm text-muted-foreground">{state.message}</p>
-        <Button asChild variant="outline">
+        {state.demoMode ? (
+          <p className="rounded-lg bg-secondary/60 px-3 py-2 text-left text-xs text-muted-foreground">
+            Demo mode: verification emails are printed in the terminal running{" "}
+            <code className="font-mono">pnpm dev</code>. Your account is already
+            active, so you can sign in immediately.
+          </p>
+        ) : null}
+        {state.verificationUrl ? (
+          <p className="break-all text-left text-xs text-muted-foreground">
+            Verification link:{" "}
+            <Link href={state.verificationUrl} className="link-underline">
+              {state.verificationUrl}
+            </Link>
+          </p>
+        ) : null}
+        <Button asChild>
           <Link href="/sign-in">Go to sign in</Link>
         </Button>
       </div>
@@ -63,7 +80,13 @@ export function SignUpForm({ defaultRole }: { defaultRole?: string }) {
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </FieldWrapper>
 
-      <FieldWrapper id="password" label="Password" required error={state.errors?.password?.[0]}>
+      <FieldWrapper
+        id="password"
+        label="Password"
+        required
+        description="At least 8 characters, including a letter and a number."
+        error={state.errors?.password?.[0]}
+      >
         <Input id="password" name="password" type="password" autoComplete="new-password" required />
       </FieldWrapper>
 

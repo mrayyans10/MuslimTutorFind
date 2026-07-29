@@ -131,10 +131,19 @@ async function sendPasswordResetEmail(email: string, displayName: string | null,
 
 export async function registerUser(input: RegisterUserInput) {
   const email = normalizeEmail(input.email);
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new Error("An account with this email already exists. Try signing in instead.");
+  }
+
   const passwordHash = await bcrypt.hash(input.password, PASSWORD_HASH_COST);
   const emailToken = randomToken();
   const emailTokenHash = hashToken(emailToken);
   const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+  const demoEmailMode = !process.env.RESEND_API_KEY;
 
   const created = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -145,7 +154,9 @@ export async function registerUser(input: RegisterUserInput) {
         displayName: input.displayName.trim(),
         phone: input.phone?.trim() || null,
         role: input.role,
-        status: "PENDING_VERIFICATION",
+        // In demo/local mode (no Resend key), activate immediately so signup is usable.
+        status: demoEmailMode ? "ACTIVE" : "PENDING_VERIFICATION",
+        emailVerified: demoEmailMode ? new Date() : null,
         country: input.country?.trim() || null,
         city: input.city?.trim() || null,
         timezone: input.timezone?.trim() || null,
@@ -166,9 +177,22 @@ export async function registerUser(input: RegisterUserInput) {
   });
 
   await sendVerificationEmail(created.email, created.displayName, emailToken);
+  const verificationUrl = tokenUrl("/verify-email", emailToken);
+
+  if (demoEmailMode) {
+    return {
+      user: created,
+      demoMode: true as const,
+      verificationUrl,
+      message:
+        "Account created. Demo email mode is on (no RESEND_API_KEY), so your account is already active — you can sign in now.",
+    };
+  }
 
   return {
     user: created,
+    demoMode: false as const,
+    verificationUrl,
     message: "Registration successful. Check your email to verify your account.",
   };
 }

@@ -23,6 +23,8 @@ export type ActionState = {
   success?: boolean;
   message?: string;
   errors?: Record<string, string[]>;
+  verificationUrl?: string;
+  demoMode?: boolean;
 };
 
 function fieldErrors(error: unknown): ActionState {
@@ -59,7 +61,12 @@ export async function signUpAction(
 
   try {
     const result = await registerUser(parsed.data);
-    return { success: true, message: result.message };
+    return {
+      success: true,
+      message: result.message,
+      verificationUrl: result.verificationUrl,
+      demoMode: result.demoMode,
+    };
   } catch (error) {
     return fieldErrors(error);
   }
@@ -88,10 +95,22 @@ export async function signInAction(
     });
     return { success: true };
   } catch (error) {
-    if (error instanceof AuthError) {
-      return { message: "Invalid email or password." };
+    // NextAuth throws a redirect on success; rethrow so Next.js can follow it.
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest?: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
     }
-    throw error;
+    if (error instanceof AuthError) {
+      return { message: "Invalid email or password. Use a registered account, or sign up first." };
+    }
+    return {
+      message: error instanceof Error ? error.message : "Sign in failed. Please try again.",
+    };
   }
 }
 
