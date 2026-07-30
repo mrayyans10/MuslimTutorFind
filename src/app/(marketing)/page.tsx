@@ -43,63 +43,43 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="relative overflow-hidden">
+      <section className="relative min-h-[85vh] overflow-hidden">
         <div
-          className="absolute inset-0 gradient-hero"
-          aria-hidden
-        />
-        <div
-          className="absolute inset-0 opacity-[0.35]"
+          className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230f4c5c' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundImage:
+              "linear-gradient(120deg, rgba(15,76,92,0.88), rgba(10,58,71,0.72)), url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1800&q=80')",
           }}
-          aria-hidden
+          role="img"
+          aria-label="Students studying together with notebooks and a laptop"
         />
-        <div className="container-page relative grid gap-10 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
-          <div className="space-y-8">
-            <p className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card/80 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm">
+        <div className="container-page relative flex min-h-[85vh] items-end py-16 sm:items-center sm:py-24">
+          <div className="max-w-2xl space-y-6 text-primary-foreground">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
               <ShieldCheck className="size-4" aria-hidden />
               Secular academic tutoring only
             </p>
-            <div className="space-y-4">
-              <h1 className="font-display text-4xl font-semibold tracking-tight text-primary sm:text-5xl lg:text-6xl">
-                {PRODUCT_NAME}
-              </h1>
-              <p className="max-w-xl text-lg text-muted-foreground sm:text-xl">
-                {PRODUCT_TAGLINE}
-              </p>
-            </div>
+            <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+              {PRODUCT_NAME}
+            </h1>
+            <p className="max-w-xl text-lg text-primary-foreground/90 sm:text-xl">
+              {PRODUCT_TAGLINE}
+            </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" asChild>
+              <Button size="lg" className="bg-amber text-white hover:bg-amber-light" asChild>
                 <Link href="/find-your-tutor">
                   Find your tutor
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/40 bg-transparent text-primary-foreground hover:bg-white/10"
+                asChild
+              >
                 <Link href="/become-a-tutor">Become a tutor</Link>
               </Button>
-            </div>
-          </div>
-
-          <div className="relative hidden lg:block">
-            <div className="relative overflow-hidden rounded-2xl shadow-lg">
-              <div
-                className="aspect-[4/3] bg-cover bg-center"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(135deg, rgba(15,76,92,0.82), rgba(15,76,92,0.45)), url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1400&q=80')",
-                }}
-                role="img"
-                aria-label="Students studying together at a shared table with notebooks and a laptop"
-              />
-              <div className="absolute inset-x-0 bottom-0 space-y-2 bg-gradient-to-t from-teal-dark/90 to-transparent p-6 text-primary-foreground">
-                <p className="font-display text-2xl font-semibold">Study together</p>
-                <p className="max-w-md text-sm text-primary-foreground/90">
-                  Community Tutors connects Muslim families with tutors for mathematics,
-                  sciences, languages, and other secular academic subjects.
-                </p>
-              </div>
             </div>
           </div>
         </div>

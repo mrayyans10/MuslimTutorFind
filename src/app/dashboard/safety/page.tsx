@@ -7,7 +7,7 @@ export const metadata = { title: "Safety" };
 export default async function SafetyPage() {
   const session = await requireSession();
 
-  const [reports, blocks] = await Promise.all([
+  const [reports, blocks, conversations] = await Promise.all([
     prisma.userReport.findMany({
       where: { reporterId: session.user.id },
       include: {
@@ -22,7 +22,41 @@ export default async function SafetyPage() {
       },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.conversationParticipant.findMany({
+      where: { userId: session.user.id },
+      include: {
+        conversation: {
+          include: {
+            participants: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    displayName: true,
+                    legalName: true,
+                    role: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      take: 50,
+    }),
   ]);
+
+  const contactMap = new Map<string, { id: string; label: string; role?: string | null }>();
+  for (const row of conversations) {
+    for (const participant of row.conversation.participants) {
+      if (participant.userId === session.user.id) continue;
+      contactMap.set(participant.userId, {
+        id: participant.userId,
+        label: participant.user.displayName ?? participant.user.legalName ?? "User",
+        role: participant.user.role,
+      });
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -32,7 +66,11 @@ export default async function SafetyPage() {
           Report concerns and manage blocked users.
         </p>
       </div>
-      <SafetyClient reports={reports} blocks={blocks} />
+      <SafetyClient
+        reports={reports}
+        blocks={blocks}
+        contacts={[...contactMap.values()]}
+      />
     </div>
   );
 }

@@ -1,11 +1,4 @@
-import {
-  approveTutorAction,
-  rejectTutorAction,
-  requestTutorChangesAction,
-} from "@/app/actions/admin";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminTutorsClient } from "@/components/admin/admin-tutors-client";
 import { prisma } from "@/lib/db";
 
 export const metadata = { title: "Tutors" };
@@ -27,45 +20,18 @@ export default async function AdminTutorsPage() {
         <h2 className="font-display text-xl font-semibold">Tutors</h2>
         <p className="text-sm text-muted-foreground">Approve, reject, or request changes.</p>
       </div>
-
-      {tutors.map((tutor) => (
-        <Card key={tutor.id}>
-          <CardHeader className="flex flex-row items-start justify-between">
-            <div>
-              <CardTitle className="text-base">
-                {tutor.user.displayName ?? tutor.user.legalName}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">{tutor.user.email}</p>
-              {tutor.headline ? <p className="mt-1 text-sm">{tutor.headline}</p> : null}
-            </div>
-            <Badge>{tutor.status}</Badge>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Subjects: {tutor.subjects.map((s) => s.subject.name).join(", ") || "None"}
-            </p>
-            {tutor.changeRequestNotes ? (
-              <p className="text-sm text-amber-600">{tutor.changeRequestNotes}</p>
-            ) : null}
-            {tutor.rejectionReason ? (
-              <p className="text-sm text-destructive">{tutor.rejectionReason}</p>
-            ) : null}
-            {["SUBMITTED", "UNDER_REVIEW", "CHANGES_REQUESTED"].includes(tutor.status) ? (
-              <div className="flex flex-wrap gap-2">
-                <form action={async () => { await approveTutorAction(tutor.id); }}>
-                  <Button type="submit" size="sm">Approve</Button>
-                </form>
-                <form action={async () => { await rejectTutorAction(tutor.id, "Does not meet requirements"); }}>
-                  <Button type="submit" size="sm" variant="outline">Reject</Button>
-                </form>
-                <form action={async () => { await requestTutorChangesAction(tutor.id, "Please update your profile"); }}>
-                  <Button type="submit" size="sm" variant="outline">Request changes</Button>
-                </form>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      ))}
+      <AdminTutorsClient
+        tutors={tutors.map((t) => ({
+          id: t.id,
+          slug: t.slug,
+          status: t.status,
+          headline: t.headline,
+          changeRequestNotes: t.changeRequestNotes,
+          rejectionReason: t.rejectionReason,
+          user: t.user,
+          subjects: t.subjects,
+        }))}
+      />
     </div>
   );
 }

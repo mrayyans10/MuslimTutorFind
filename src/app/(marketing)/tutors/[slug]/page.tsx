@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   BadgeCheck,
   BookOpen,
-  Flag,
   MapPin,
-  MessageSquare,
   Monitor,
   Star,
 } from "lucide-react";
@@ -14,20 +11,19 @@ import {
 import { getTutorBySlug } from "@/app/actions/tutors";
 import { PRODUCT_NAME, SECULAR_SUBJECTS_NOTICE } from "@config/product";
 import { SecularNotice } from "@/components/marketing/secular-notice";
+import { TutorProfileActions } from "@/components/tutors/tutor-profile-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  formatCurrency,
-} from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import {
   formatDayOfWeek,
   formatLearnerLevel,
   formatTeachingStyle,
   formatTimePeriod,
 } from "@/lib/tutors/mappers";
+import { auth } from "@/lib/auth";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -57,6 +53,7 @@ export default async function TutorProfilePage({ params }: PageProps) {
   const { slug } = await params;
   const tutor = await getTutorBySlug(slug);
   if (!tutor) notFound();
+  const session = await auth();
 
   const displayName = tutor.user.displayName ?? tutor.user.legalName ?? "Tutor";
   const locationParts = [
@@ -108,19 +105,11 @@ export default async function TutorProfilePage({ params }: PageProps) {
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild>
-                <Link href={`/messages/new?tutor=${tutor.id}`}>
-                  <MessageSquare className="size-4" />
-                  Message
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href={`/report?tutor=${tutor.id}`}>
-                  <Flag className="size-4" />
-                  Report
-                </Link>
-              </Button>
+            <div className="mt-6">
+              <TutorProfileActions
+                tutorProfileId={tutor.id}
+                signedIn={Boolean(session?.user?.id)}
+              />
             </div>
           </section>
 

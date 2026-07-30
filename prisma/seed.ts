@@ -705,6 +705,81 @@ async function main() {
     },
   });
 
+  const report = await prisma.userReport.create({
+    data: {
+      reporterId: studentUser.id,
+      reportedId: createdTutors[5].userId,
+      reason: "Spam or scam",
+      details: "Demo report for moderator review workflow.",
+      targetType: "TutorProfile",
+      targetId: createdTutors[5].profileId,
+      status: "OPEN",
+    },
+  });
+
+  await prisma.moderationCase.create({
+    data: {
+      reportId: report.id,
+      title: "Report: Spam or scam",
+      status: "OPEN",
+      internalNotes: "Seeded moderation case for demo.",
+    },
+  });
+
+  await prisma.userBlock.create({
+    data: {
+      blockerId: parentUser.id,
+      blockedId: createdTutors[9].userId,
+    },
+  });
+
+  const questionnaire = await prisma.findTutorQuestionnaire.create({
+    data: {
+      userId: studentUser.id,
+      currentStep: 12,
+      completedAt: new Date(),
+      answers: {
+        whoNeedsHelp: "Myself",
+        subjectId: algebra.id,
+        topic: "Quadratic equations",
+        learnerLevel: "HIGH_SCHOOL",
+        curriculum: "Ontario curriculum",
+        learningGoal: "IMPROVE_GRADES",
+        whenNeeded: "TWO_WEEKS",
+        mode: "ONLINE",
+        country: "Canada",
+        city: "Toronto",
+        budgetMin: 30,
+        budgetMax: 55,
+        currency: "CAD",
+        scheduleDays: ["MONDAY", "WEDNESDAY"],
+        schedulePeriods: ["EVENING"],
+        preferredLanguage: "English",
+        verifiedOnly: false,
+        teachingStyles: ["PATIENT_ENCOURAGING"],
+      },
+    },
+  });
+
+  await prisma.tutorMatch.create({
+    data: {
+      questionnaireId: questionnaire.id,
+      tutorProfileId: createdTutors[0].profileId,
+      score: 92,
+      explanation:
+        "92% match because this tutor teaches high-school calculus and algebra, supports the Ontario curriculum, offers online tutoring, fits your budget, and is generally available during weekday evenings.",
+      mismatches: [],
+      rank: 1,
+      factors: {
+        create: [
+          { factorKey: "topic", weight: 18, score: 95, reason: "Specialization aligns with algebra." },
+          { factorKey: "curriculum", weight: 12, score: 100, reason: "Supports the Ontario curriculum." },
+          { factorKey: "budget", weight: 12, score: 100, reason: "Hourly rate fits your budget." },
+        ],
+      },
+    },
+  });
+
   await prisma.auditLog.create({
     data: {
       actorId: admin.id,

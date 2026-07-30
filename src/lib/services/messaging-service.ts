@@ -160,15 +160,28 @@ export async function reportUser(input: ReportUserInput) {
     throw new Error("You cannot report yourself.");
   }
 
-  return prisma.userReport.create({
-    data: {
-      reporterId: input.reporterId,
-      reportedId: input.reportedId,
-      reason: input.reason.trim(),
-      details: input.details?.trim() || null,
-      targetType: input.targetType ?? "USER",
-      targetId: input.targetId ?? null,
-    },
+  return prisma.$transaction(async (tx) => {
+    const report = await tx.userReport.create({
+      data: {
+        reporterId: input.reporterId,
+        reportedId: input.reportedId,
+        reason: input.reason.trim(),
+        details: input.details?.trim() || null,
+        targetType: input.targetType ?? "USER",
+        targetId: input.targetId ?? null,
+      },
+    });
+
+    await tx.moderationCase.create({
+      data: {
+        reportId: report.id,
+        title: `Report: ${input.reason.trim()}`,
+        status: "OPEN",
+        internalNotes: input.details?.trim() || null,
+      },
+    });
+
+    return report;
   });
 }
 

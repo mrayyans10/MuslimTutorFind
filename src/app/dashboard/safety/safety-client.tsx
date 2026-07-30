@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useActionState, useTransition } from "react";
 
 import {
@@ -12,8 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 type Report = {
@@ -30,39 +31,28 @@ type Block = {
   createdAt: Date;
 };
 
+export type ContactOption = {
+  id: string;
+  label: string;
+  role?: string | null;
+};
+
 const initialState: ActionState = {};
-
-function BlockUserForm() {
-  const [pending, startTransition] = useTransition();
-  const [userId, setUserId] = React.useState("");
-
-  return (
-    <div className="flex gap-2">
-      <Input
-        placeholder="User ID to block"
-        value={userId}
-        onChange={(e) => setUserId(e.target.value)}
-      />
-      <Button
-        type="button"
-        disabled={pending || !userId}
-        onClick={() => startTransition(() => { void blockUserAction(userId); })}
-      >
-        Block
-      </Button>
-    </div>
-  );
-}
 
 export function SafetyClient({
   reports,
   blocks,
+  contacts,
 }: {
   reports: Report[];
   blocks: Block[];
+  contacts: ContactOption[];
 }) {
   const [state, formAction, pending] = useActionState(reportUserAction, initialState);
   const [unblockPending, startUnblock] = useTransition();
+  const [blockState, setBlockState] = React.useState<ActionState>({});
+  const [blockPending, startBlock] = useTransition();
+  const [blockUserId, setBlockUserId] = React.useState(contacts[0]?.id ?? "");
 
   return (
     <div className="space-y-6">
@@ -73,25 +63,56 @@ export function SafetyClient({
         <CardContent>
           <form action={formAction} className="space-y-4">
             {state.message ? (
-              <p className={state.success ? "text-sm text-green-600" : "text-sm text-destructive"}>
+              <p className={state.success ? "text-sm text-green-700" : "text-sm text-destructive"}>
                 {state.message}
               </p>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor="reportedId">User ID to report</Label>
-              <Input id="reportedId" name="reportedId" required placeholder="User ID" />
+              <Label htmlFor="reportedId">Person to report</Label>
+              {contacts.length > 0 ? (
+                <Select id="reportedId" name="reportedId" required defaultValue="">
+                  <option value="" disabled>
+                    Select from people you have messaged
+                  </option>
+                  {contacts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                      {c.role ? ` (${c.role.toLowerCase()})` : ""}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Message someone first, or use Report on a tutor profile.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="reason">Reason</Label>
-              <Input id="reason" name="reason" required />
+              <Select id="reason" name="reason" required defaultValue="">
+                <option value="" disabled>
+                  Select a reason
+                </option>
+                <option value="Inappropriate communication">Inappropriate communication</option>
+                <option value="Religious instruction offered">Religious instruction offered</option>
+                <option value="False qualifications">False qualifications</option>
+                <option value="Spam or scam">Spam or scam</option>
+                <option value="Harassment">Harassment</option>
+                <option value="Other">Other</option>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="details">Details</Label>
               <Textarea id="details" name="details" rows={3} />
             </div>
-            <Button type="submit" disabled={pending}>
-              Submit report
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={pending || contacts.length === 0}>
+                Submit report
+              </Button>
+              <Button type="button" variant="outline" asChild>
+                <Link href="/find-tutors">Report from tutor profiles</Link>
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
@@ -100,26 +121,65 @@ export function SafetyClient({
         <CardHeader>
           <CardTitle>Block a user</CardTitle>
         </CardHeader>
-        <CardContent>
-          <BlockUserForm />
+        <CardContent className="space-y-3">
+          {blockState.message ? (
+            <p className={blockState.success ? "text-sm text-green-700" : "text-sm text-destructive"}>
+              {blockState.message}
+            </p>
+          ) : null}
+          {contacts.length > 0 ? (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select
+                value={blockUserId}
+                onChange={(e) => setBlockUserId(e.target.value)}
+                aria-label="Person to block"
+              >
+                {contacts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                type="button"
+                disabled={blockPending || !blockUserId}
+                onClick={() =>
+                  startBlock(async () => {
+                    const result = await blockUserAction(blockUserId);
+                    setBlockState(result);
+                  })
+                }
+              >
+                Block
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No recent contacts yet. You can also block from a tutor profile after messaging.
+            </p>
+          )}
         </CardContent>
       </Card>
 
       <div className="space-y-4">
         <h3 className="font-medium">Your reports ({reports.length})</h3>
-        {reports.map((report) => (
-          <Card key={report.id}>
-            <CardContent className="flex items-center justify-between py-4">
-              <div>
-                <p className="font-medium text-sm">
-                  {report.reported.displayName ?? report.reported.legalName}
-                </p>
-                <p className="text-sm text-muted-foreground">{report.reason}</p>
-              </div>
-              <Badge>{report.status}</Badge>
-            </CardContent>
-          </Card>
-        ))}
+        {reports.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No reports submitted yet.</p>
+        ) : (
+          reports.map((report) => (
+            <Card key={report.id}>
+              <CardContent className="flex items-center justify-between py-4">
+                <div>
+                  <p className="text-sm font-medium">
+                    {report.reported.displayName ?? report.reported.legalName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{report.reason}</p>
+                </div>
+                <Badge>{report.status}</Badge>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       <div className="space-y-4">
@@ -138,7 +198,11 @@ export function SafetyClient({
                   size="sm"
                   variant="outline"
                   disabled={unblockPending}
-                  onClick={() => startUnblock(() => { void unblockUserAction(block.blocked.id); })}
+                  onClick={() =>
+                    startUnblock(() => {
+                      void unblockUserAction(block.blocked.id);
+                    })
+                  }
                 >
                   Unblock
                 </Button>
