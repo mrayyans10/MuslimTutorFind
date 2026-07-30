@@ -82,20 +82,46 @@ export async function signInAction(
   });
 
   if (!parsed.success) {
-    return { errors: parsed.error.flatten().fieldErrors };
+    return {
+      message: "Please enter a valid email and password.",
+      errors: parsed.error.flatten().fieldErrors,
+    };
   }
 
-  const callbackUrl = String(formData.get("callbackUrl") || "/dashboard");
+  const requestedCallback = String(formData.get("callbackUrl") || "").trim();
 
   try {
-    await signIn("credentials", {
+    const result = await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: callbackUrl,
+      redirect: false,
     });
-    return { success: true };
+
+    if (!result || result.error) {
+      return {
+        message:
+          "Invalid email or password. Use a demo account (e.g. tutor1@example.com / Password123!) or sign up first.",
+      };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: parsed.data.email.toLowerCase() },
+      select: { role: true },
+    });
+
+    let destination = "/dashboard";
+    if (user?.role === "TUTOR") destination = "/tutor/dashboard";
+    else if (user?.role === "ADMINISTRATOR" || user?.role === "MODERATOR") {
+      destination = "/admin";
+    } else if (
+      requestedCallback.startsWith("/") &&
+      !requestedCallback.startsWith("//")
+    ) {
+      destination = requestedCallback;
+    }
+
+    redirect(destination);
   } catch (error) {
-    // NextAuth throws a redirect on success; rethrow so Next.js can follow it.
     if (
       error &&
       typeof error === "object" &&
@@ -106,8 +132,12 @@ export async function signInAction(
       throw error;
     }
     if (error instanceof AuthError) {
-      return { message: "Invalid email or password. Use a registered account, or sign up first." };
+      return {
+        message:
+          "Invalid email or password. Use a demo account (e.g. tutor1@example.com / Password123!) or sign up first.",
+      };
     }
+    console.error("signInAction failed", error);
     return {
       message: error instanceof Error ? error.message : "Sign in failed. Please try again.",
     };

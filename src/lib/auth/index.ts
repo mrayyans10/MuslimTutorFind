@@ -51,9 +51,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
         const email = parsed.data.email.toLowerCase();
         const user = await prisma.user.findUnique({ where: { email } });
-        // Constant-ish response path to reduce enumeration via timing of bcrypt
-        const hash = user?.passwordHash ?? "$2a$12$invalidhashinvalidhashinvalidhoO";
-        const valid = await bcrypt.compare(parsed.data.password, hash);
+        // Valid bcrypt hash of an unrelated string so compare never throws for missing users.
+        const hash =
+          user?.passwordHash ??
+          "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+        let valid = false;
+        try {
+          valid = await bcrypt.compare(parsed.data.password, hash);
+        } catch (error) {
+          console.error("Password compare failed", error);
+          return null;
+        }
         if (!user || !user.passwordHash || !valid) return null;
         if (user.status === "BANNED" || user.status === "SUSPENDED" || user.status === "DELETED") {
           return null;
@@ -112,5 +120,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   trustHost: true,
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET || "dev-only-change-me-to-a-long-random-string",
 });
