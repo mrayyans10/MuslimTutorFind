@@ -1,0 +1,298 @@
+"use server";
+
+import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
+import type { UserRole } from "@prisma/client";
+
+import {
+  registerUser,
+  requestPasswordReset,
+  resetPassword,
+  verifyEmail,
+} from "@/lib/services/auth-service";
+import { signIn, signOut } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import {
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  signInSchema,
+  signUpSchema,
+} from "@/lib/validations/auth";
+import { claimGuestQuestionnaires } from "@/lib/services/matching-service";
+
+export type ActionState = {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+  verificationUrl?: string;
+  demoMode?: boolean;
+};
+
+function fieldErrors(error: unknown): ActionState {
+  if (error && typeof error === "object" && "flatten" in error) {
+    const flattened = (
+      error as { flatten: () => { fieldErrors: Record<string, string[]> } }
+    ).flatten();
+    return { errors: flattened.fieldErrors };
+  }
+  return {
+    message: error instanceof Error ? error.message : "Something went wrong.",
+  };
+}
+
+export async function signUpAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = signUpSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+    legalName: formData.get("legalName"),
+    displayName: formData.get("displayName"),
+    role: formData.get("role"),
+    country: formData.get("country"),
+    city: formData.get("city"),
+    phone: formData.get("phone"),
+    timezone: formData.get("timezone"),
+  });
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  try {
+    const result = await registerUser(parsed.data);
+
+    try {
+      const { cookies } = await import("next/headers");
+      const guestId = (await cookies()).get("ct_guest_session")?.value;
+      if (guestId && result.user.id) {
+        await claimGuestQuestionnaires(result.user.id, guestId);
+      }
+    } catch (claimError) {
+      console.error("Failed to claim guest questionnaires after signup", claimError);
+    }
+
+    return {
+      success: true,
+      message: result.message,
+      verificationUrl: result.verificationUrl,
+      demoMode: result.demoMode,
+    };
+  } catch (error) {
+    return fieldErrors(error);
+  }
+}
+
+export async function signInAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = signInSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return {
+      message: "Please enter a valid email and password.",
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const requestedCallback = String(formData.get("callbackUrl") || "").trim();
+
+  try {
+    const result = await signIn("credentials", {
+      email: parsed.data.email,
+      password: parsed.data.password,
+      redirect: false,
+    });
+
+    if (!result || result.error) {
+      return {
+        message:
+          "Invalid email or password. Use a demo account (e.g. tutor1@example.com / Password123!) or sign up first.",
+      };
+    }
+
+    try {
+      const { cookies } = await import("next/headers");
+      const guestId = (await cookies()).get("ct_guest_session")?.value;
+      if (guestId) {
+        const user = await prisma.user.findUnique({
+          where: { email: parsed.data.email.toLowerCase() },
+          select: { id: true },
+        });
+        if (user) await claimGuestQuestionnaires(user.id, guestId);
+      }
+    } catch (claimError) {
+      console.error("Failed to claim guest questionnaires", claimError);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: parsed.data.email.toLowerCase() },
+      select: { role: true },
+    });
+
+    let destination = "/dashboard";
+    if (user?.role === "TUTOR") destination = "/tutor/dashboard";
+    else if (user?.role === "ADMINISTRATOR" || user?.role === "MODERATOR") {
+      destination = "/admin";
+    } else if (
+      requestedCallback.startsWith("/") &&
+      !requestedCallback.startsWith("//")
+    ) {
+      destination = requestedCallback;
+    }
+
+    redirect(destination);
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest?: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    if (error instanceof AuthError) {
+      return {
+        message:
+          "Invalid email or password. Use a demo account (e.g. tutor1@example.com / Password123!) or sign up first.",
+      };
+    }
+    console.error("signInAction failed", error);
+    return {
+      message: error instanceof Error ? error.message : "Sign in failed. Please try again.",
+    };
+  }
+}
+
+export async function forgotPasswordAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = forgotPasswordSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  try {
+    const result = await requestPasswordReset(parsed.data.email);
+    return { success: true, message: result.message };
+  } catch (error) {
+    return fieldErrors(error);
+  }
+}
+
+export async function resetPasswordAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = resetPasswordSchema.safeParse({
+    token: formData.get("token"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  try {
+    await resetPassword(parsed.data.token, parsed.data.password);
+    redirect("/sign-in?reset=success");
+  } catch (error) {
+    if (isNextRedirect(error)) throw error;
+    return fieldErrors(error);
+  }
+}
+
+function isNextRedirect(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: "/" });
+}
+
+export async function verifyEmailAction(token: string): Promise<ActionState> {
+  try {
+    const result = await verifyEmail(token);
+    return { success: true, message: result.message };
+  } catch (error) {
+    return fieldErrors(error);
+  }
+}
+
+export async function completeOnboardingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const role = formData.get("role");
+  if (role !== "STUDENT" && role !== "PARENT" && role !== "TUTOR") {
+    return { message: "Select a valid role." };
+  }
+
+  const { auth } = await import("@/lib/auth");
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { message: "You must be signed in." };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: session.user.id },
+        data: { role: role as UserRole },
+        select: { id: true, role: true, displayName: true, legalName: true, phone: true },
+      });
+
+      if (user.role === "STUDENT") {
+        await tx.studentProfile.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id },
+          update: {},
+        });
+      } else if (user.role === "PARENT") {
+        await tx.parentProfile.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id, phone: user.phone },
+          update: {},
+        });
+      } else if (user.role === "TUTOR") {
+        const displayName = user.displayName ?? user.legalName ?? "Tutor";
+        const slugBase = displayName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "tutor";
+        await tx.tutorProfile.upsert({
+          where: { userId: user.id },
+          create: {
+            userId: user.id,
+            slug: `${slugBase}-${user.id.slice(0, 8)}`,
+          },
+          update: {},
+        });
+      }
+    });
+
+    const destination =
+      role === "TUTOR" ? "/tutor/setup" : "/dashboard";
+    redirect(destination);
+  } catch (error) {
+    if (isNextRedirect(error)) throw error;
+    return fieldErrors(error);
+  }
+}
