@@ -10,7 +10,7 @@ import {
   resetPassword,
   verifyEmail,
 } from "@/lib/services/auth-service";
-import { signIn } from "@/lib/auth";
+import { signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   forgotPasswordSchema,
@@ -18,6 +18,7 @@ import {
   signInSchema,
   signUpSchema,
 } from "@/lib/validations/auth";
+import { claimGuestQuestionnaires } from "@/lib/services/matching-service";
 
 export type ActionState = {
   success?: boolean;
@@ -61,6 +62,17 @@ export async function signUpAction(
 
   try {
     const result = await registerUser(parsed.data);
+
+    try {
+      const { cookies } = await import("next/headers");
+      const guestId = (await cookies()).get("ct_guest_session")?.value;
+      if (guestId && result.user.id) {
+        await claimGuestQuestionnaires(result.user.id, guestId);
+      }
+    } catch (claimError) {
+      console.error("Failed to claim guest questionnaires after signup", claimError);
+    }
+
     return {
       success: true,
       message: result.message,
@@ -102,6 +114,20 @@ export async function signInAction(
         message:
           "Invalid email or password. Use a demo account (e.g. tutor1@example.com / Password123!) or sign up first.",
       };
+    }
+
+    try {
+      const { cookies } = await import("next/headers");
+      const guestId = (await cookies()).get("ct_guest_session")?.value;
+      if (guestId) {
+        const user = await prisma.user.findUnique({
+          where: { email: parsed.data.email.toLowerCase() },
+          select: { id: true },
+        });
+        if (user) await claimGuestQuestionnaires(user.id, guestId);
+      }
+    } catch (claimError) {
+      console.error("Failed to claim guest questionnaires", claimError);
     }
 
     const user = await prisma.user.findUnique({
@@ -182,8 +208,23 @@ export async function resetPasswordAction(
     await resetPassword(parsed.data.token, parsed.data.password);
     redirect("/sign-in?reset=success");
   } catch (error) {
+    if (isNextRedirect(error)) throw error;
     return fieldErrors(error);
   }
+}
+
+function isNextRedirect(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: "/" });
 }
 
 export async function verifyEmailAction(token: string): Promise<ActionState> {
@@ -248,9 +289,10 @@ export async function completeOnboardingAction(
     });
 
     const destination =
-      role === "TUTOR" ? "/tutor/profile" : role === "PARENT" ? "/dashboard" : "/dashboard";
+      role === "TUTOR" ? "/tutor/setup" : "/dashboard";
     redirect(destination);
   } catch (error) {
+    if (isNextRedirect(error)) throw error;
     return fieldErrors(error);
   }
 }

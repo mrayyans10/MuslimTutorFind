@@ -9,7 +9,11 @@ export default async function TutorLayout({
   const session = await requireRole(["TUTOR"]);
 
   return (
-    <DashboardShell area="tutor" role={session.user.role!}>
+    <DashboardShell
+      area="tutor"
+      role={session.user.role!}
+      userName={session.user.name}
+    >
       {children}
     </DashboardShell>
   );

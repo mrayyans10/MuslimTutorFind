@@ -171,3 +171,21 @@ export async function generateTutorMatches(input: GenerateTutorMatchesInput) {
     return persisted;
   });
 }
+
+/** Attach guest Find Your Tutor questionnaires to a newly signed-in user. */
+export async function claimGuestQuestionnaires(userId: string, guestSessionId: string) {
+  if (!guestSessionId) return { claimed: 0 };
+
+  const result = await prisma.findTutorQuestionnaire.updateMany({
+    where: {
+      guestSessionId,
+      OR: [{ userId: null }, { userId }],
+    },
+    data: {
+      userId,
+      guestSessionId: null,
+    },
+  });
+
+  return { claimed: result.count };
+}

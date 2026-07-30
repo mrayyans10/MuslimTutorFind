@@ -4,10 +4,10 @@ import * as React from "react";
 import { useActionState } from "react";
 
 import {
-  submitTutorForApprovalAction,
   updateTutorProfileAction,
   type ActionState,
 } from "@/app/actions/dashboard";
+import { SubmitForApprovalButton } from "@/components/tutors/submit-for-approval-button";
 import { SecularNotice } from "@/components/marketing/secular-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -125,21 +125,15 @@ export function TutorProfileForm({ profile }: { profile: TutorProfile }) {
       </Card>
 
       {["DRAFT", "CHANGES_REQUESTED", "REJECTED"].includes(profile.status) ? (
-        <SubmitButton />
+        <Card>
+          <CardHeader>
+            <CardTitle>Ready to submit?</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SubmitForApprovalButton />
+          </CardContent>
+        </Card>
       ) : null}
     </div>
-  );
-}
-
-function SubmitButton() {
-  const [pending, startTransition] = React.useTransition();
-  return (
-    <Button
-      type="button"
-      disabled={pending}
-      onClick={() => startTransition(() => { void submitTutorForApprovalAction(); })}
-    >
-      Submit for approval
-    </Button>
   );
 }

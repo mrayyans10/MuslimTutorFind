@@ -54,6 +54,7 @@ const studentParentLinks: NavItem[] = [
 
 const tutorLinks: NavItem[] = [
   { href: "/tutor/dashboard", label: "Overview", icon: Home, roles: ["TUTOR"] },
+  { href: "/tutor/setup", label: "Setup checklist", icon: ClipboardList, roles: ["TUTOR"] },
   { href: "/tutor/profile", label: "Profile", icon: User, roles: ["TUTOR"] },
   { href: "/tutor/subjects", label: "Subjects", icon: BookOpen, roles: ["TUTOR"] },
   { href: "/tutor/schedule", label: "Schedule", icon: Calendar, roles: ["TUTOR"] },

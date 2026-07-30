@@ -35,7 +35,18 @@ Accounts: `admin@example.com`, `moderator@example.com`, `student@example.com`, `
 - Prohibited religious-subject rejection
 - Full docs under `docs/`
 
-## Manual configuration still required for production
+## Recent improvements
 
-- Strong `AUTH_SECRET`, real Postgres, Resend API key, S3 credentials, Google OAuth
-- Professional legal review of draft policies
+- Message tutor flow at `/messages/new`
+- Report tutor flow at `/report`
+- Session-aware header with Dashboard + Sign out
+- Mobile dashboard navigation
+- Tutor setup checklist at `/tutor/setup`
+- Guest Find Your Tutor results claimed after sign-in/sign-up
+- Home hero uses a real study-session visual
+- Local demo signup activates immediately without Resend
+
+## Demo logins
+
+Password: `Password123!`  
+`admin@example.com` · `student@example.com` · `parent@example.com` · `tutor1@example.com`

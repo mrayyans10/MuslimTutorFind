@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 import { PRODUCT_NAME } from "@config/product";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { signOutAction } from "@/app/actions/auth";
 
 const navLinks = [
   { href: "/find-tutors", label: "Find tutors" },
@@ -17,9 +18,21 @@ const navLinks = [
   { href: "/become-a-tutor", label: "Become a tutor" },
 ] as const;
 
-export function SiteHeader() {
+export type HeaderSession = {
+  name?: string | null;
+  role?: string | null;
+} | null;
+
+function dashboardHref(role?: string | null) {
+  if (role === "TUTOR") return "/tutor/dashboard";
+  if (role === "ADMINISTRATOR" || role === "MODERATOR") return "/admin";
+  return "/dashboard";
+}
+
+export function SiteHeader({ session }: { session?: HeaderSession }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const signedIn = Boolean(session);
 
   React.useEffect(() => {
     setMobileOpen(false);
@@ -56,12 +69,27 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Button variant="ghost" asChild>
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/sign-up">Sign up</Link>
-          </Button>
+          {signedIn ? (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href={dashboardHref(session?.role)}>Dashboard</Link>
+              </Button>
+              <form action={signOutAction}>
+                <Button type="submit" variant="outline">
+                  Sign out
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/sign-up">Sign up</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <Button
@@ -98,12 +126,27 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="mt-3 flex flex-col gap-2 border-t border-border pt-4">
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-              <Button asChild className="w-full">
-                <Link href="/sign-up">Sign up</Link>
-              </Button>
+              {signedIn ? (
+                <>
+                  <Button variant="outline" asChild className="w-full">
+                    <Link href={dashboardHref(session?.role)}>Dashboard</Link>
+                  </Button>
+                  <form action={signOutAction}>
+                    <Button type="submit" className="w-full" variant="secondary">
+                      Sign out
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" asChild className="w-full">
+                    <Link href="/sign-in">Sign in</Link>
+                  </Button>
+                  <Button asChild className="w-full">
+                    <Link href="/sign-up">Sign up</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </nav>
         </div>

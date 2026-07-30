@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpen,
   GraduationCap,
   Search,
   ShieldCheck,
@@ -84,24 +83,22 @@ export default async function HomePage() {
           </div>
 
           <div className="relative hidden lg:block">
-            <div className="surface-card overflow-hidden shadow-lg">
-              <div className="aspect-[4/3] bg-gradient-to-br from-secondary via-off-white to-primary/10 p-8">
-                <div className="flex h-full flex-col justify-between rounded-xl border border-border/60 bg-card/90 p-6 backdrop-blur-sm">
-                  <div className="space-y-2">
-                    <BookOpen className="size-10 text-primary" aria-hidden />
-                    <p className="font-display text-2xl font-semibold text-foreground">
-                      Study together, grow together
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      A warm study table scene — notebooks, a laptop, and community
-                      members learning mathematics, sciences, and languages together
-                      in a welcoming academic setting.
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Visual anchor: community study session · secular subjects
-                  </p>
-                </div>
+            <div className="relative overflow-hidden rounded-2xl shadow-lg">
+              <div
+                className="aspect-[4/3] bg-cover bg-center"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(135deg, rgba(15,76,92,0.82), rgba(15,76,92,0.45)), url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1400&q=80')",
+                }}
+                role="img"
+                aria-label="Students studying together at a shared table with notebooks and a laptop"
+              />
+              <div className="absolute inset-x-0 bottom-0 space-y-2 bg-gradient-to-t from-teal-dark/90 to-transparent p-6 text-primary-foreground">
+                <p className="font-display text-2xl font-semibold">Study together</p>
+                <p className="max-w-md text-sm text-primary-foreground/90">
+                  Community Tutors connects Muslim families with tutors for mathematics,
+                  sciences, languages, and other secular academic subjects.
+                </p>
               </div>
             </div>
           </div>

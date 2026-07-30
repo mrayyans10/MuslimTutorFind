@@ -16,7 +16,7 @@ export default async function DashboardLayout({
   if (role !== "STUDENT" && role !== "PARENT") redirect("/onboarding");
 
   return (
-    <DashboardShell area="dashboard" role={role}>
+    <DashboardShell area="dashboard" role={role} userName={session.user.name}>
       {children}
     </DashboardShell>
   );
